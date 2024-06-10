@@ -1,92 +1,105 @@
 import express from "express";
 import { PrismaClient } from "@prisma/client";
+import bodyParser from "body-parser";
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+// Use body-parser middleware to parse JSON requests
+app.use(bodyParser.json());
 
 app.post("/identify", async (req, res) => {
   const { email, phoneNumber } = req.body;
 
   if (!email && !phoneNumber) {
-    return res
-      .status(400)
-      .json({ error: "Either email or phoneNumber is required" });
+    return res.status(400).json({ error: "Email or phoneNumber required" });
   }
 
-  try {
-    let contact = await prisma.contact.findFirst({
-      where: {
-        OR: [{ email }, { phoneNumber }],
+  let contacts = await prisma.contact.findMany({
+    where: {
+      OR: [
+        { email: email || undefined },
+        { phoneNumber: phoneNumber || undefined },
+      ],
+    },
+  });
+
+  if (contacts.length === 0) {
+    const newContact = await prisma.contact.create({
+      data: {
+        email,
+        phoneNumber,
+        linkPrecedence: "primary",
       },
     });
 
-    if (!contact) {
-      contact = await prisma.contact.create({
-        data: {
-          email,
-          phoneNumber,
-          linkPrecedence: "primary",
-        },
-      });
-      return res.json({
-        contact: {
-          primaryContactId: contact.id,
-          emails: [email].filter(Boolean),
-          phoneNumbers: [phoneNumber].filter(Boolean),
-          secondaryContactIds: [],
-        },
-      });
-    }
-
-    const primaryContactId = contact.linkedId || contact.id;
-
-    const contacts = await prisma.contact.findMany({
-      where: {
-        OR: [{ id: primaryContactId }, { linkedId: primaryContactId }],
-      },
-    });
-
-    const emails = Array.from(
-      new Set(contacts.map((c) => c.email).filter(Boolean))
-    );
-    const phoneNumbers = Array.from(
-      new Set(contacts.map((c) => c.phoneNumber).filter(Boolean))
-    );
-    const secondaryContactIds = contacts
-      .filter((c) => c.linkPrecedence === "secondary")
-      .map((c) => c.id);
-
-    if (
-      contact.linkPrecedence === "primary" &&
-      (email !== contact.email || phoneNumber !== contact.phoneNumber)
-    ) {
-      await prisma.contact.create({
-        data: {
-          email,
-          phoneNumber,
-          linkedId: primaryContactId,
-          linkPrecedence: "secondary",
-        },
-      });
-    }
-
-    res.json({
+    return res.json({
       contact: {
-        primaryContactId,
-        emails,
-        phoneNumbers,
-        secondaryContactIds,
+        primaryContactId: newContact.id,
+        emails: [newContact.email],
+        phoneNumbers: [newContact.phoneNumber],
+        secondaryContactIds: [],
       },
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: "Internal Server Error" });
   }
+
+  let primaryContact = contacts.find((c) => c.linkPrecedence === "primary");
+  if (!primaryContact) {
+    primaryContact = contacts[0];
+  }
+
+  const secondaryContacts = contacts.filter((c) => c.id !== primaryContact.id);
+
+  if (secondaryContacts.length > 0) {
+    await prisma.contact.updateMany({
+      where: {
+        id: {
+          in: secondaryContacts.map((c) => c.id),
+        },
+      },
+      data: {
+        linkedId: primaryContact.id,
+        linkPrecedence: "secondary",
+      },
+    });
+  }
+
+  if (
+    !contacts.find((c) => c.email === email || c.phoneNumber === phoneNumber)
+  ) {
+    const newSecondary = await prisma.contact.create({
+      data: {
+        email,
+        phoneNumber,
+        linkedId: primaryContact.id,
+        linkPrecedence: "secondary",
+      },
+    });
+    secondaryContacts.push(newSecondary);
+  }
+
+  const response = {
+    contact: {
+      primaryContactId: primaryContact.id,
+      emails: [
+        primaryContact.email,
+        ...secondaryContacts.map((c) => c.email),
+      ].filter(Boolean),
+      phoneNumbers: [
+        primaryContact.phoneNumber,
+        ...secondaryContacts.map((c) => c.phoneNumber),
+      ].filter(Boolean),
+      secondaryContactIds: secondaryContacts.map((c) => c.id),
+    },
+  };
+
+  res.json(response);
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`🚀 Server is running on port ${PORT}`);
+  console.log(
+    `Copy this URL to use the API: http://localhost:${PORT}/identify`
+  );
 });
