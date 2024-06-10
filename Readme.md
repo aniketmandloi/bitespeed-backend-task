@@ -21,12 +21,17 @@
 - Install Prisma CLI from [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-cli/installation).
 - run migrations: `npx prisma migrate dev --name init`.
 
-# Run the server Locally
+## Run the server Locally
 
 - start the server: `npm run dev`.
 - The server will be running at `http://localhost:3000`.
 
-# Testing with Postman
+## Live Project URL (Production)
+
+- used render.com to host the web service.
+- Copy this url for the live server: `https://bitespeed-backend-task-acjk.onrender.com/identify`. (its not working because my database is not able to connect with the live server for that maybe i have to deploy a database as well) but you can try it locally it will be really easy.
+
+## Testing with Postman
 
 - You can test the endpoints with Postman.
 - You can download the postman from [here](https://www.postman.com/downloads/).
