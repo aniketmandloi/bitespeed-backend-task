@@ -18,7 +18,7 @@ model Contact {
   phoneNumber   String?  @unique
   email         String?  @unique
   linkedId      Int?
-  linkPrecedent String   @default("primary")
+  linkPrecedence String   @default("primary")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   deletedAt     DateTime? 
