@@ -29,14 +29,14 @@
 ## Live Project URL (Production)
 
 - used render.com to host the web service.
-- Copy this url for the live server: `https://bitespeed-backend-task-acjk.onrender.com/identify`. (its not working because my database is not able to connect with the live server for that maybe i have to deploy a database as well) but you can try it locally it will be really easy.
+- Copy this url for the live server: `https://bitespeed-backend-task-acjk.onrender.com/identify`. Hosted Database as well so that it can work in production mode.
 
 ## Testing with Postman
 
 - You can test the endpoints with Postman.
 - You can download the postman from [here](https://www.postman.com/downloads/).
 - now start postman and create a workspace.
-- select the request `POST` and enter the endpoint: `http://localhost:3000`.
+- select the request `POST` and enter the endpoint: `https://bitespeed-backend-task-acjk.onrender.com/identify`.
 - select body tab and enter the body: `{
   "email": "example@example.com",
   "phoneNumber": "1234567890"
